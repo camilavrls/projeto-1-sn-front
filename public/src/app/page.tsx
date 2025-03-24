@@ -1,6 +1,3 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import styles from "./page.module.css";
 
 // Define a interface para os dados do usuário
@@ -10,47 +7,40 @@ interface UserData {
   estadoCivil: string;
 }
 
-export default function Home() {
-  // Tipagem explícita para os estados
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  // Endereço da API: pode ser configurado via variável de ambiente ou alterado diretamente
+// Função assíncrona para buscar os dados do servidor
+async function fetchUserData(): Promise<UserData> {
   const apiUrl =
-    process.env.NEXT_PUBLIC_API_URL || "http://seu-endereco-da-api.com/endpoint";
+    process.env.NEXT_PUBLIC_API_URL || "http://54.145.45.4:8080/data";
 
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-          throw new Error(`Erro ao buscar os dados: ${response.status}`);
-        }
-        // Define explicitamente que os dados retornados seguem a interface UserData
-        const data: UserData = await response.json();
-        setUserData(data);
-      } catch (err) {
-        // Verifica se o erro é do tipo Error
-        if (err instanceof Error) {
-          setError(err);
-        } else {
-          setError(new Error("Erro desconhecido"));
-        }
-      } finally {
-        setLoading(false);
-      }
+  const response = await fetch(apiUrl);
+
+  if (!response.ok) {
+    throw new Error(`Erro ao buscar os dados: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export default async function Home() {
+  let userData: UserData | null = null;
+  let errorMessage: string | null = null;
+
+  try {
+    userData = await fetchUserData();
+  } catch (error) {
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else {
+      errorMessage = "Erro desconhecido";
     }
-    fetchData();
-  }, [apiUrl]);
+  }
 
   return (
     <div className={styles.page}>
       <main className={styles.main}>
         <h1>Informações do Usuário</h1>
-        {loading && <p>Carregando...</p>}
-        {error && <p>{error.message}</p>}
-        {userData && (
+        {errorMessage && <p>{errorMessage}</p>}
+        {userData ? (
           <div>
             <p>
               <strong>Nome:</strong> {userData.nome}
@@ -62,6 +52,8 @@ export default function Home() {
               <strong>Estado Civil:</strong> {userData.estadoCivil}
             </p>
           </div>
+        ) : (
+          <p>Não foi possível carregar os dados.</p>
         )}
       </main>
       <footer className={styles.footer}>
